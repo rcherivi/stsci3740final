@@ -1,0 +1,31 @@
+---
+title: "exploratory-analysis"
+author: "Rishika Cherivirala"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+```{r}
+redwine_df <- read.csv("data/winequality-red.csv")
+whitewine_df <- read.csv("data/winequality-white.csv")
+names_df <- readLines("data/winequality.names")
+```
+
+
+```{r}
+summary(redwine_df)
+
+```
+```{r}
+summary(whitewine_df)
+```
+```{r}
+names_df
+```
+
