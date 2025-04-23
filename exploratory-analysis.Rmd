@@ -7,13 +7,20 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+library(caret)
+library(dplyr)
+library(ggplot2)
+library(randomForest)
+library(vip)
+
+
 ```
 
 ## R Markdown
 
 ```{r}
-redwine_df <- read.csv("data/winequality-red.csv")
-whitewine_df <- read.csv("data/winequality-white.csv")
+redwine_df <- read.csv("data/winequality-red.csv", sep = ";")
+whitewine_df <- read.csv("data/winequality-white.csv", sep = ";")
 names_df <- readLines("data/winequality.names")
 ```
 
@@ -25,7 +32,149 @@ summary(redwine_df)
 ```{r}
 summary(whitewine_df)
 ```
+
+# Red Wine Analysis
+
+## Logistic Regression
 ```{r}
-names_df
+#  If the quality is greater than 7, it gets a label of 1 (good), otherwise 0 (bad)
+redwine_df <- redwine_df %>%
+  mutate(quality_label = ifelse(quality >= 7, 1, 0)) %>%
+  mutate(quality_label = as.factor(quality_label))
+
+# Split data into train and test
+set.seed(2950)
+train_index <- sample(1:nrow(redwine_df), 0.8 * nrow(redwine_df))
+train <- redwine_df[train_index, ]
+test <- redwine_df[-train_index, ]
+
+# Fitting logistic regression model
+log_model <- glm(quality_label ~ . - quality, data = train, family = "binomial")
+
+# Summary of model
+summary(log_model)
+
+# Predicting on test data
+pred_probs <- predict(log_model, test, type = "response")
+
+# Evaluating model
+pred_labels <- ifelse(pred_probs > 0.5, 1, 0) %>% as.factor()
+
+confusionMatrix(pred_labels, test$quality_label)
+
+```
+
+```{r}
+table(redwine_df$quality_label)
+
+
+ggplot(redwine_df, aes(x = quality_label)) +
+  geom_bar(fill = "steelblue") +
+  labs(title = "Distribution of Quality Labels",
+       x = "Quality Label (0 = Not Good, 1 = Good)",
+       y = "Frequency")
+```
+Volitale acidity, residual sugar, chlorides, total sulfur dioxide, sulfates, and alcohol seem to be statistically significant since their p-values are less than 0.05. The model has an accuracy of Accuracy : 0.8589. 
+
+
+# White Wine Analysis
+
+## Logistic Regression
+```{r}
+
+# If the quality is greater than 7, it gets a label of 1 (good), otherwise 0 (bad)
+whitewine_df <- whitewine_df %>%
+  mutate(quality_label = ifelse(quality >= 7, 1, 0)) %>%
+  mutate(quality_label = as.factor(quality_label))
+
+# Split data into train and test
+set.seed(2950)
+train_index <- sample(1:nrow(whitewine_df), 0.8 * nrow(whitewine_df))
+train <- whitewine_df[train_index, ]
+test <- whitewine_df[-train_index, ]
+
+# Fitting logistic regression model
+log_model <- glm(quality_label ~ . - quality, data = train, family = "binomial")
+
+# Summary of model
+summary(log_model)
+
+# Predicting on test data
+pred_probs <- predict(log_model, test, type = "response")
+
+# Evaluating model
+pred_labels <- ifelse(pred_probs > 0.5, 1, 0) %>% as.factor()
+
+confusionMatrix(pred_labels, test$quality_label)
+
+```
+
+```{r}
+table(whitewine_df$quality_label)
+
+
+ggplot(whitewine_df, aes(x = quality_label)) +
+  geom_bar(fill = "steelblue") +
+  labs(title = "Distribution of Quality Labels",
+       x = "Quality Label (0 = Not Good, 1 = Good)",
+       y = "Frequency")
+```
+
+Fixed Acidity, Volitale Acidity, Citric Acid, residual sugars, free sulfur dioxide, density, pH, sulphates, alcohol all seem to be statistically significant. The model seems to have an accuracy of 0.7819. 
+
+# Red & White Wine Analysis
+
+```{r}
+redwine_df$wine_type <- 1  
+whitewine_df$wine_type <- 0  
+
+# Combine the red and white wine datasets into one
+wine_df <- rbind(redwine_df, whitewine_df)
+
+summary(wine_df)
+```
+
+
+## Random Forest 
+```{r}
+
+wine_df$quality_numeric <- as.numeric(as.character(wine_df$quality))
+wine_df <- wine_df %>%
+  filter(!is.na(quality_numeric))  
+
+# If quality is greater than 7, label as 1 (good), otherwise 0 (bad)
+wine_df <- wine_df %>%
+  mutate(quality_label = ifelse(quality_numeric >= 7, 1, 0)) %>%
+  mutate(quality_label = as.factor(quality_label))
+
+# Convert quality column to factor for classification
+wine_df$quality <- as.factor(wine_df$quality)
+
+# Split the data into training and testing sets
+set.seed(2950)
+train_index <- sample(1:nrow(wine_df), 0.8 * nrow(wine_df))
+train_data <- wine_df[train_index, ]
+test_data <- wine_df[-train_index, ]
+
+# Train a random forest model
+rf_model <- randomForest(quality ~ . - quality_label - quality_numeric, data = train_data)
+print(rf_model)
+
+# Predict on the test data
+predictions <- predict(rf_model, test_data)
+
+# Evaluating model
+confusion_matrix <- confusionMatrix(predictions, test_data$quality)
+print(confusion_matrix)
+
+
+```
+```{r}
+plot(rf_model, main = "Random Forest Model Error Rate")
+importance_rf <- randomForest::importance(rf_model)
+varImpPlot(rf_model, main = "Feature Importance in Random Forest")
+vip(rf_model, num_features = 10)
+
+
 ```
 
