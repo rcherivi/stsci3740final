@@ -3,6 +3,8 @@
 ## Models Tried:
 
 ### Multinomial Model
+- RMSE:
+- AIC: 
 - Accuracy: 0.5451
 
 ### Logistic Regression
