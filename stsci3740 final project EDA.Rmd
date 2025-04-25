@@ -1,0 +1,106 @@
+---
+title: "STSCI 3740 final project"
+author: "Fiona Huang"
+date: "2025-04-18"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(ggplot2)
+library(leaps)
+library(tidyverse)
+library(corrplot)
+```
+
+The goal is to predict the wine quality.
+
+```{r}
+# import datasets
+red <- read.csv("C:/Users/xinya/Downloads/Cornell Classes/STSCI 3740/final project/winequality-red.csv", sep=";")
+
+white <- read.csv("C:/Users/xinya/Downloads/Cornell Classes/STSCI 3740/final project/winequality-white.csv", sep=";")
+
+wine <- read.csv("C:/Users/xinya/Downloads/Cornell Classes/STSCI 3740/final project/wine-quality-white-and-red.csv")
+```
+
+
+```{r}
+head(wine)
+names(wine)
+
+# Check missing values
+colSums(is.na(wine))
+```
+
+
+```{r}
+summary(wine)
+
+```
+```{r}
+hist(wine$quality, breaks = seq(2.5, 9.5, by = 1), xlim=c(0, 10))
+axis(1, at = 0:10)
+
+```
+
+Look at the histogram of each variables
+```{r}
+
+num_wine <- wine %>% select(-type)
+
+wine_long <- pivot_longer(num_wine, -quality, names_to = "feature", values_to = "value")
+
+ggplot(wine_long, aes(x = value)) +
+  geom_histogram(bins = 30, fill = "steelblue", color = "white") +
+  facet_wrap(~feature, scales = "free") +
+  labs(title = "Distributions of Features", x = "Value", y = "Frequency")
+
+```
+
+
+```{r}
+cor_matrix <- cor(num_wine)
+cor_matrix
+
+corrplot(cor_matrix, method="color", tl.cex=0.8)
+
+```
+
+
+```{r}
+pairs(num_wine)
+
+```
+
+
+Look at the correlation with quality
+```{r}
+quality_corr <- cor(num_wine)[, "quality"]
+sort(quality_corr, decreasing = TRUE)
+
+```
+
+
+
+```{r}
+selected_features <- wine %>%
+  select(quality, alcohol, density, volatile.acidity, chlorides)
+
+
+pairs(selected_features)
+```
+
+
+```{r}
+ggplot(wine_long, aes(x = factor(quality), y = value)) +
+  geom_boxplot() +
+  facet_wrap(~feature, scales = "free") +
+  labs(title = "Feature Distributions by Wine Quality", x = "Quality", y = "Value") +
+  theme(legend.position = "none")
+
+```
+

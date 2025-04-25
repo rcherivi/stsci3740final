@@ -1,0 +1,112 @@
+---
+title: "stsci3740 final project modeling"
+author: "Fiona Huang"
+date: "2025-04-25"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(ggplot2)
+library(leaps)
+library(tidyverse)
+library(corrplot)
+library(class)
+library(caret)
+```
+
+
+```{r}
+# import datasets
+red <- read.csv("C:/Users/xinya/Downloads/Cornell Classes/STSCI 3740/final project/winequality-red.csv", sep=";")
+
+white <- read.csv("C:/Users/xinya/Downloads/Cornell Classes/STSCI 3740/final project/winequality-white.csv", sep=";")
+
+wine <- read.csv("C:/Users/xinya/Downloads/Cornell Classes/STSCI 3740/final project/wine-quality-white-and-red.csv")
+```
+
+
+## Fitting a KNN Model
+
+```{r}
+# normalize the data using z-score
+normalize <- function(x) {
+  return((x - mean(x)) / sd(x))
+}
+
+# wine_norm <- wine %>% 
+#   mutate(across(where(is.numeric) & !where(is.factor), normalize))
+
+all_columns <- names(wine)
+columns_to_normalize <- all_columns[all_columns != "quality" & sapply(wine, is.numeric)]
+wine_norm <- wine
+wine_norm[columns_to_normalize] <- lapply(wine[columns_to_normalize], normalize)
+
+
+
+# change type of wine to white=1, red=2
+wine_norm$type <- as.numeric(factor(wine_norm$type))
+
+# split the dataset into train/test
+set.seed(1)
+index <- sample(1:nrow(wine_norm), size=nrow(wine_norm)*0.7, rep=FALSE)
+training <- wine_norm[index, ]
+testing <- wine_norm[-index, ]
+
+training_X <- training %>% select(-quality)
+testing_X <- testing %>% select(-quality)
+```
+
+
+```{r}
+# try different values of k
+k.values <- 1:20
+
+knn.errors <- sapply(k.values, function(k) {
+  knn.pred <- knn(training_X, testing_X, training$quality, k=k)
+  mean(knn.pred != testing$quality)
+})
+
+print(knn.errors)
+
+```
+
+The value of k that seems to perform the best on this data is k=1.
+
+
+```{r}
+set.seed(1)
+# 10-fold cross validation 
+control <- trainControl(method = "cv", number = 10)
+
+knn_cv <- train(
+  quality ~ .,
+  data = wine_norm,
+  method = "knn",
+  trControl = control,
+  tuneGrid = expand.grid(k = 1:20)
+)
+
+knn_cv
+plot(knn_cv)
+
+```
+
+
+```{r}
+model <- knn(training_X, testing_X, training$quality, k=10)
+  
+```
+
+
+
+```{r}
+# fitting the knn models using less number of variables
+X <- c("alcohol", "volatile.acidity", "residual.sugar", "total.sulfur.dioxide")
+
+```
+
+
