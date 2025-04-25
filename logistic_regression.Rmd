@@ -77,23 +77,26 @@ sapply(roc_list, auc)
 
 ```{r}
 
-wine_df$quality <- as.factor(wine_df$quality)
-
-control <- trainControl(method = "cv", number = 10)
-
-set.seed(1)
-multi_model_cv <- train(quality ~ ., data = wine_df, method = "multinom", trControl = control)
-
-print(multi_model_cv)
-
-predictions <- predict(multi_model_cv, newdata = test)
-
-confusionMatrix(predictions, test$quality)
+# wine_df$quality <- as.factor(wine_df$quality)
+# 
+# control <- trainControl(method = "cv", number = 10)
+# 
+# set.seed(1)
+# multi_model_cv <- train(quality ~ ., data = wine_df, method = "multinom", trControl = control)
+# 
+# print(multi_model_cv)
+# 
+# predictions <- predict(multi_model_cv, newdata = test)
+# 
+# confusionMatrix(predictions, test$quality)
 
 
 
 ```
 Accuracy= 0.5477
+
+## RMSE
+
 
 #Logistic Regression
 
@@ -113,6 +116,7 @@ train2 <- wine_df[index2, ]
 test2 <- wine_df[-index2, ]
 
 log_model <- glm(quality_binary ~ . - quality, data = train2, family = binomial)
+summary(log_model)
 
 predictions2 <- predict(log_model, test2, type = "response")
 predicted_classes2 <- ifelse(predictions2 > 0.5, "1", "0")
@@ -120,6 +124,23 @@ predicted_classes2 <- ifelse(predictions2 > 0.5, "1", "0")
 confusionMatrix(as.factor(predicted_classes2), test2$quality_binary)
 
 ```
+```{r}
+
+log2_index <- sample(1:nrow(wine_df), 0.7 * nrow(wine_df))
+log2_train <- wine_df[log2_index, ]
+log2_test <- wine_df[-log2_index, ]
+
+log_model2 <- glm(quality_binary ~ . - quality - type - citric.acid, data = log2_train, family = binomial)
+
+log_predictions2 <- predict(log_model2, log2_test, type = "response")
+
+log_predicted_classes2 <- ifelse(log_predictions2 > 0.5, "1", "0")
+
+
+
+```
+
+
 ## ROC Curve
 ```{r}
 predictions_prob <- predict(log_model, test2, type = "response")
@@ -242,5 +263,29 @@ legend("bottomright",
        col = c("red", "blue", "green"), 
        lwd = 2)
 
+```
+### RMSE
+
+```{r}
+actual_normal <- as.numeric(as.character(test2$quality_binary))
+
+rmse_normal <- sqrt(mean((predictions_prob - actual_normal)^2))
+cat("RMSE for Normal Logistic Regression:", rmse_normal, "\n")
+
+actual_weighted <- as.numeric(as.character(test3$quality_binary))
+
+rmse_weighted <- sqrt(mean((predictions_prob2 - actual_weighted)^2))
+cat("RMSE for Weighted Logistic Regression:", rmse_weighted, "\n")
+
+actual_balanced <- as.numeric(as.character(test_balanced$quality_binary))
+
+rmse_balanced <- sqrt(mean((predictions_balanced - actual_balanced)^2))
+cat("RMSE for Undersampled Logistic Regression:", rmse_balanced, "\n")
+
+actual_normal2 <- as.numeric(as.character(log2_test$quality_binary))
+rmse_log2 <- sqrt(mean((log_predictions2 - actual_normal2)^2))
+cat("RMSE for Specific Predictors Logistic Regression:", rmse_log2, "\n")
+
+AIC(log_model, log_model_weighted, log_model_balanced, log_model2)
 ```
 
