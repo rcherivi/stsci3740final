@@ -22,6 +22,6 @@
 
 ### Weighted Logistic Regression
 - RMSE: 0.427233
-- 951.6473
+- AIC: 951.6473
 - Accuracy: 0.7241
 
