@@ -16,8 +16,6 @@ library(vip)
 
 ```
 
-## R Markdown
-
 ```{r}
 redwine_df <- read.csv("data/winequality-red.csv", sep = ";")
 whitewine_df <- read.csv("data/winequality-white.csv", sep = ";")
@@ -63,6 +61,15 @@ pred_labels <- ifelse(pred_probs > 0.5, 1, 0) %>% as.factor()
 confusionMatrix(pred_labels, test$quality_label)
 
 ```
+```{r}
+predictions_prob <- predict(log_model, test, type = "response")
+
+roc_curve <- roc(test$quality_label, predictions_prob)
+plot(roc_curve, col = "blue", main = "ROC Curve")
+
+auc(roc_curve)
+```
+
 
 ```{r}
 table(redwine_df$quality_label)
@@ -107,6 +114,14 @@ pred_labels <- ifelse(pred_probs > 0.5, 1, 0) %>% as.factor()
 
 confusionMatrix(pred_labels, test$quality_label)
 
+```
+```{r}
+predictions_prob <- predict(log_model, test, type = "response")
+
+roc_curve <- roc(test$quality_label, predictions_prob)
+plot(roc_curve, col = "blue", main = "ROC Curve")
+
+auc(roc_curve)
 ```
 
 ```{r}
