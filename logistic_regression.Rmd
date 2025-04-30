@@ -12,6 +12,7 @@ library(dplyr)
 library(ggplot2)
 library(nnet)
 library(pROC)
+library(car)
 
 ```
 
@@ -288,4 +289,75 @@ cat("RMSE for Specific Predictors Logistic Regression:", rmse_log2, "\n")
 
 AIC(log_model, log_model_weighted, log_model_balanced, log_model2)
 ```
+
+```{r}
+# checking for multicollinearity
+
+vif_model <- lm(quality ~ ., data = wine_df)
+vif(vif_model)
+
+```
+Since density has a large vif, I'm going to remove it from the model.
+
+```{r}
+set.seed(1)
+
+# Remove 'quality' from wine_df
+wine_df2 <- subset(wine_df, select = -quality)
+
+# Train-test split
+index <- sample(1:nrow(wine_df2), 0.7 * nrow(wine_df2))
+train <- wine_df2[index, ]
+test <- wine_df2[-index, ]
+
+# Fitting models
+train$quality_binary <- factor(train$quality_binary)
+test$quality_binary <- factor(test$quality_binary, levels = levels(train$quality_binary))
+
+model_full <- multinom(quality_binary ~ ., data = train)
+model_nodensity <- multinom(quality_binary ~ . - density, data = train)
+model_nodensity_sugar <- multinom(quality_binary ~ . - density - residual.sugar, data = train)
+model_top <- multinom(quality_binary ~ alcohol + fixed.acidity + volatile.acidity + sulphates, data = train)
+
+# Predicting models
+pred_full <- factor(predict(model_full, newdata = test), levels = levels(test$quality_binary))
+pred_nodensity <- factor(predict(model_nodensity, newdata = test), levels = levels(test$quality_binary))
+pred_nodensity_sugar <- factor(predict(model_nodensity_sugar, newdata = test), levels = levels(test$quality_binary))
+pred_top <- factor(predict(model_top, newdata = test), levels = levels(test$quality_binary))
+
+# Evaluation matrix
+confusionMatrix(pred_full, test$quality_binary)
+confusionMatrix(pred_nodensity, test$quality_binary)
+confusionMatrix(pred_nodensity_sugar, test$quality_binary)
+confusionMatrix(pred_top, test$quality_binary)
+
+# AIC 
+AIC(model_full)
+AIC(model_nodensity)
+AIC(model_nodensity_sugar)
+AIC(model_top)
+
+
+
+
+```
+```{r}
+# calculating the rmse values too
+
+calculate_rmse <- function(actual, predicted) {
+  sqrt(mean((actual - predicted)^2))
+}
+
+rmse_full <- calculate_rmse(as.numeric(test$quality_binary), as.numeric(pred_full))
+rmse_nodensity <- calculate_rmse(as.numeric(test$quality_binary), as.numeric(pred_nodensity))
+rmse_nodensity_sugar <- calculate_rmse(as.numeric(test$quality_binary), as.numeric(pred_nodensity_sugar))
+rmse_top <- calculate_rmse(as.numeric(test$quality_binary), as.numeric(pred_top))
+
+rmse_full
+rmse_nodensity
+rmse_nodensity_sugar
+rmse_top
+
+```
+The RMSE values are basically the same.
 
