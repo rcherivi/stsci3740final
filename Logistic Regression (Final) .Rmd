@@ -1,0 +1,128 @@
+---
+title: "Logistic Regression Model (Final)"
+authors: Isabella Chen, Rishika Cherivirala, Fiona Huang, Katie Perlitz
+date: "`r Sys.Date()`"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(caret)
+library(dplyr)
+library(ggplot2)
+library(nnet)
+library(pROC)
+library(car)
+```
+
+```{r}
+wine_df <- read.csv("data/wine-quality-white-and-red.csv")
+head(wine_df)
+```
+
+```{r}
+quality_counts <- table(wine_df$quality)
+print(quality_counts)
+```
+
+# Binary Logistic Regression
+```{r}
+wine_df <- wine_df %>%
+  mutate(quality = as.numeric(as.character(quality))) %>%
+  mutate(quality_binary = ifelse(quality >= 7, 1, 0)) %>%
+  mutate(quality_binary = as.factor(quality_binary))
+
+set.seed(1)
+index <- sample(1:nrow(wine_df), 0.7 * nrow(wine_df))
+train <- wine_df[index, ]
+test <- wine_df[-index, ]
+
+log_model <- glm(quality_binary ~ . - quality, data = train, family = binomial)
+summary(log_model)
+
+predictions <- predict(log_model, test, type = "response")
+predicted_classes <- ifelse(predictions > 0.5, "1", "0")
+confusionMatrix(as.factor(predicted_classes), test$quality_binary)
+```
+
+## ROC Curve
+```{r}
+predictions_prob <- predict(log_model, test, type = "response")
+roc_curve <- roc(test$quality_binary, predictions_prob)
+plot(roc_curve, col = "blue", main = "ROC Curve for Logistic Regression")
+auc(roc_curve)
+```
+
+## Cross Validation
+```{r}
+control <- trainControl(method = "cv", number = 10)
+set.seed(1)
+cv_model <- train(quality_binary ~ . - quality, data = wine_df, method = "glm", family = binomial, trControl = control)
+predictions <- predict(cv_model, newdata = test)
+confusionMatrix(predictions, test$quality_binary)
+```
+## Binary Logistic Regression with Variables Taken Out
+```{r}
+wine_df <- wine_df %>%
+  mutate(quality = as.numeric(as.character(quality))) %>%
+  mutate(quality_binary = ifelse(quality >= 7, 1, 0)) %>%
+  mutate(quality_binary = as.factor(quality_binary))
+
+set.seed(1)
+index2 <- sample(1:nrow(wine_df), 0.7 * nrow(wine_df))
+train2 <- wine_df[index2, ]
+test2 <- wine_df[-index2, ]
+
+log_model2 <- glm(quality_binary ~ . - quality - citric.acid - type, data = train2, family = binomial)
+summary(log_model2)
+
+predictions2 <- predict(log_model2, test2, type = "response")
+predicted_classes2 <- ifelse(predictions2 > 0.5, "1", "0")
+confusionMatrix(as.factor(predicted_classes2), test2$quality_binary)
+```
+# Multinomial Logistic Regression
+```{r}
+wine_df <- read.csv("data/wine-quality-white-and-red.csv")
+```
+
+```{r}
+wine_df$quality <- as.factor(wine_df$quality)
+
+set.seed(1)
+index3 <- sample(1:nrow(wine_df), 0.7 * nrow(wine_df))
+train3 <- wine_df[index3, ]
+test3 <- wine_df[-index3, ]
+
+multi_model <- multinom(quality ~ ., data = train3)
+predictions3 <- predict(multi_model, test3)
+confusionMatrix(predictions3, test3$quality)
+```
+
+## ROC Curve
+```{r}
+predicted_probs_multi <- predict(multi_model, test3, type = "probs")
+true_labels <- test3$quality
+
+roc_list <- lapply(levels(true_labels), function(class_label) {
+  binary_labels <- ifelse(true_labels == class_label, 1, 0)
+  roc(binary_labels, predicted_probs_multi[, class_label])
+})
+
+plot(roc_list[[1]], col = "red", main = "Multinomial ROC Curves", lwd = 2)
+for (i in 2:length(roc_list)) {
+  lines(roc_list[[i]], col = i, lwd = 2)
+}
+legend("bottomright", legend = levels(true_labels), col = 1:length(roc_list), lwd = 2)
+sapply(roc_list, auc)
+```
+
+## Cross Validation
+```{r, eval=FALSE}
+control2 <- trainControl(method = "cv", number = 10)
+set.seed(1)
+multi_model_cv <- train(quality ~ ., data = wine_df, method = "multinom", trControl = control2)
+predictions3 <- predict(multi_model_cv, newdata = test3)
+confusionMatrix(predictions3, test3$quality)
+```
