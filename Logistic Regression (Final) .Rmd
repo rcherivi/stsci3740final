@@ -59,7 +59,7 @@ auc(roc_curve)
 ```{r}
 control <- trainControl(method = "cv", number = 10)
 set.seed(1)
-cv_model <- train(quality_binary ~ . - quality, data = wine_df, method = "glm", family = binomial, trControl = control)
+cv_model <- train(quality_binary ~ . - quality, data = train, method = "glm", family = binomial, trControl = control)
 predictions <- predict(cv_model, newdata = test)
 confusionMatrix(predictions, test$quality_binary)
 ```
@@ -120,9 +120,11 @@ sapply(roc_list, auc)
 
 ## Cross Validation
 ```{r, eval=FALSE}
+train3$quality <- as.factor(train3$quality)
+test3$quality <- as.factor(test3$quality)
 control2 <- trainControl(method = "cv", number = 10)
 set.seed(1)
-multi_model_cv <- train(quality ~ ., data = wine_df, method = "multinom", trControl = control2)
+multi_model_cv <- train(quality ~ ., data = train3, method = "multinom", trControl = control2)
 predictions3 <- predict(multi_model_cv, newdata = test3)
 confusionMatrix(predictions3, test3$quality)
 ```
