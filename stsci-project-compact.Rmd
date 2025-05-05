@@ -1,0 +1,188 @@
+---
+title: "Linear Regression, GAM Models, and RMSE Comparison"
+authors: Isabella Chen, Rishika Cherivirala, Fiona Huang, Katie Perlitz
+date: "`r Sys.Date()`"
+output:
+  pdf_document: default
+  html_document: default
+---
+```{r setup, include=FALSE}
+# Load required libraries
+library(ggplot2)
+library(leaps)
+library(glmnet)
+library(mgcv)
+library(FNN)
+library(dplyr)
+```
+
+## Setup Data
+```{r}
+# Get data
+wineData <- read.csv("~/Downloads/wine-quality-white-and-red.csv")
+
+wineData$type <- as.factor(wineData$type)
+
+# Split to training and testing data
+set.seed(1)
+train = sample(1:nrow(wineData), 0.7 * nrow(wineData))
+train_data = wineData[train, ]
+test_data = wineData[-train, ]
+```
+
+## Best Subset Selection 
+```{r}
+
+
+regfit.best=regsubsets(quality~.,data=train_data, nvmax=12)
+test.mat=model.matrix(quality~.,data=test_data) # create an X matrix of test data
+val.errors=rep(NA,19)
+for(i in 1:12){
+   coefi=coef(regfit.best,id=i)
+   pred=test.mat[,names(coefi)]%*%coefi
+   val.errors[i] <- mean((test_data$quality - pred)^2)
+}
+
+summary(regfit.best)
+
+which.min(val.errors)
+coef(regfit.best,12)
+```
+
+## Explore Predictors for GAM
+```{r}
+library(ggplot2)
+
+# Continuous variables
+predictors <- c("fixed.acidity", "volatile.acidity", "citric.acid", "residual.sugar",
+                "chlorides", "free.sulfur.dioxide", "total.sulfur.dioxide",
+                "density", "pH", "sulphates", "alcohol")
+
+# Plot each predictor against quality
+for (var in predictors) {
+  p <- ggplot(wineData, aes_string(x = var, y = "quality")) +
+    geom_point(alpha = 0.3) +
+    geom_smooth(method = "loess", se = FALSE, color = "blue") +
+    labs(title = paste("Quality vs", var))
+  print(p)
+}
+
+# Categorical: type
+ggplot(wineData, aes(x = type, y = quality)) +
+  geom_boxplot() +
+  labs(title = "Quality vs Type")
+```
+
+
+
+## Comparing RMSE using 10-Fold Cross Validation for Linear Regression, GAM1, GAM2, KNN, and Lasso
+```{r}
+# Get data
+wineData <- read.csv("~/Downloads/wine-quality-white-and-red.csv")
+
+wineData$type <- as.factor(wineData$type)
+
+# Split to training and testing data
+set.seed(1)
+train = sample(1:nrow(wineData), 0.7 * nrow(wineData))
+train_data = wineData[train, ]
+test_data = wineData[-train, ]
+
+# Normalize function for KNN
+normalize <- function(x) {
+  return((x - mean(x)) / sd(x))
+}
+
+
+wine <- wineData
+
+# Normalize numeric columns except quality
+all_columns <- names(wine)
+columns_to_normalize <- all_columns[all_columns != "quality" & sapply(wine, is.numeric)]
+wine[columns_to_normalize] <- lapply(wine[columns_to_normalize], normalize)
+
+# Convert factor
+wine$type <- as.numeric(factor(wine$type))
+
+# Setup cross-validation
+k <- 10
+folds <- sample(1:k, nrow(wine), replace = TRUE)
+
+# Empty vectors to store RMSE
+rmse_linear <- rmse_gam1 <- rmse_gam2 <- rmse_knn <- rmse_lasso <- numeric(k)
+
+for (i in 1:k) {
+  ktrain_data <- wine[folds != i, ]
+  ktest_data <- wine[folds == i, ]
+  
+  # Linear Regression
+  lm_model <- lm(quality ~ ., data = ktrain_data)
+  linear_preds <- predict(lm_model, newdata = ktest_data)
+  rmse_linear[i] <- sqrt(mean((linear_preds - ktest_data$quality)^2))
+  
+  # GAM Model 1 (smooth all variables)
+  gam_model1 <- gam(quality ~ 
+                     s(fixed.acidity) + 
+                     s(volatile.acidity) +
+                     s(citric.acid) +
+                    s(chlorides) + 
+                     s(residual.sugar) +
+                    s(free.sulfur.dioxide) +
+                     s(total.sulfur.dioxide) +
+                     s(density) +
+                     s(sulphates) +
+                     s(alcohol) + s(pH), data = ktrain_data, select=TRUE)
+    gam_preds1 <- predict(gam_model1, newdata = ktest_data)
+    rmse_gam1[i] <- sqrt(mean((gam_preds1 - ktest_data$quality)^2))
+  
+    # GAM Model 2 (smooth most variables)
+    gam_model2 <- gam(quality ~ 
+                        fixed.acidity + 
+                     volatile.acidity +
+                     s(citric.acid) +
+                     residual.sugar +
+                     s(chlorides) +
+                     free.sulfur.dioxide +
+                     total.sulfur.dioxide +
+                     density +
+                     s(sulphates) +
+                     s(alcohol) + s(pH), 
+                      data = ktrain_data)
+    gam_preds2 <- predict(gam_model2, newdata = ktest_data)
+    rmse_gam2[i] <- sqrt(mean((gam_preds2 - ktest_data$quality)^2))
+  
+  # KNN
+  train_knn <- ktrain_data
+  test_knn <- ktest_data
+  train_knn$quality <- as.factor(train_knn$quality)
+  test_knn$quality <- as.factor(test_knn$quality)
+  
+  training_X <- dplyr::select(train_knn, -quality)
+  testing_X <- dplyr::select(test_knn, -quality)
+  
+  knn_preds <- knn.reg(train = training_X, test = testing_X, y = as.numeric(train_knn$quality), k = 7)$pred
+  rmse_knn[i] <- sqrt(mean((knn_preds - as.numeric(test_knn$quality))^2))
+  
+  # Lasso
+  x_train <- as.matrix(dplyr::select(ktrain_data, -quality))
+  y_train <- ktrain_data$quality
+  x_test <- as.matrix(dplyr::select(ktest_data, -quality))
+  
+  lasso_cv <- cv.glmnet(x_train, y_train, alpha = 1)
+  best_lambda <- lasso_cv$lambda.min
+  lasso_preds <- predict(lasso_cv, s = best_lambda, newx = x_test)
+  rmse_lasso[i] <- sqrt(mean((lasso_preds - ktest_data$quality)^2))
+}
+
+# Average RMSE across folds
+results <- data.frame(
+  Model = c("Linear", "GAM1", "GAM2", "KNN", "Lasso"),
+  RMSE = c(mean(rmse_linear), mean(rmse_gam1), mean(rmse_gam2), mean(rmse_knn), mean(rmse_lasso))
+)
+
+
+print(results)
+
+
+```
+
