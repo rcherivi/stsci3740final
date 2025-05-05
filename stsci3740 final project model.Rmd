@@ -78,6 +78,8 @@ print(knn.errors)
 The value of k that seems to perform the best on this data is k=1.
 
 
+## Choose the optimal k-value using Cross Validation
+
 ```{r}
 set.seed(1)
 # 10-fold cross validation 
@@ -96,11 +98,12 @@ plot(knn_cv)
 
 ```
 
+## Fitting the best model
 
 ```{r}
 model <- knn(training_X, testing_X, training$quality, k=10)
 
-confusion_matrix <- table(Predicted = model, Actual = testing$quality)
+confusion_matrix <- table(coPredicted = model, Actual = testing$quality)
 print(confusion_matrix)
 
 accuracy <- sum(diag(confusion_matrix)) / sum(confusion_matrix)
@@ -108,72 +111,7 @@ accuracy
   
 ```
 
-
-
-```{r eval=FALSE}
-# fitting the knn models using less number of variables
-X <- c("alcohol", "volatile.acidity", "residual.sugar", "total.sulfur.dioxide")
-
-# use RFE (recursive feature elimination to select different subsets)
-rfe_ctrl <- rfeControl(functions = caretFuncs, method = "cv", number = 10)
-rfe_model <- rfe(wine_norm %>% select(-quality),
-                 wine_norm$quality,
-                 sizes = c(2:11), # test sets with 2 to 11 variables
-                 rfeControl = rfe_ctrl,
-                 method = "knn")
-
-# Best variable set
-print(rfe_model$optVariables)
-
-```
-
-```{r eval=FALSE}
-# plot the model performance as a function of number of variables
-plot(rfe_model, type = c("g", "o"))
-```
-
-
-
-```{r}
-new_wine <- wine
-new_wine$type <- as.numeric(factor(new_wine$type))
-
-# Fit a linear model
-lm_model <- lm(quality ~ ., data = new_wine)
-
-# Stepwise model selection
-step_model <- step(lm_model, direction = "backward")
-step_model
-```
-
-```{r}
-# try stepwise with normalized data
-
-# Fit a linear model
-lm_model <- lm(quality ~ ., data = wine_norm)
-
-# Stepwise model selection
-step_model <- step(lm_model, direction = "both")
-step_model
-```
-
-
-```{r}
-# best subset selection
-library(leaps)
-
-best_fit <- regsubsets(quality ~ ., data = new_wine, nvmax = 11)
-summary(best_fit)
-
-# find model size with lowest BIC
-summary_best <- summary(best_fit)
-which.min(summary_best$bic)
-
-plot(summary_best$bic, type = "b", main = "BIC for Best Subset Models")
-points(which.min(summary_best$bic), summary_best$bic[which.min(summary_best$bic)],
-       col = "red", pch = 19)
-```
-
+## Apply PCA to reduce diensionality
 
 ```{r}
 # apply PCA before fitting KNN
@@ -189,21 +127,17 @@ scaled_data <- scale(predictors)
 # Perform PCA
 pca_result <- prcomp(scaled_data, center = TRUE, scale. = TRUE)
 summary(pca_result)
-
-# reduce dimensionality
-# choose the first two PCs
-pca_data <- pca_result$x[, 1:2]
 ```
+
+Decided to choose the first eight PCs
 
 ```{r}
-# plot the first two PCs
-pca_df <- data.frame(PC1 = pca_data[, 1], PC2 = pca_data[, 2], Target = target)
-ggplot(pca_df, aes(x = PC1, y = PC2, color = Target)) +
-  geom_point() +
-  theme_minimal() +
-  ggtitle("PCA Plot of the Data")
+# reduce dimensionality
+# choose the first eight PCs
+pca_data <- pca_result$x[, 1:8]
 ```
 
+## Fit KNN Model on PCA-reduced data
 
 ```{r}
 # apply KNN on PCA-reduced data
@@ -215,7 +149,7 @@ testing_data <- pca_data[-index_2, ]
 training_targt <- target[index_2]
 testing_target <- target[-index_2]
 
-# 10-fold cross validation 
+# 10-fold cross validation to find the best k
 control_new <- trainControl(method = "cv", number = 10)
 
 knn_cv_2 <- train(
@@ -236,6 +170,11 @@ print(confusion_matrix)
 
 accuracy <- sum(diag(confusion_matrix)) / sum(confusion_matrix)
 accuracy
+
+```
+
+
+```{r}
 
 ```
 

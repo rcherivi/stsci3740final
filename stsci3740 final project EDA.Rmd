@@ -16,7 +16,6 @@ library(tidyverse)
 library(corrplot)
 ```
 
-The goal is to predict the wine quality.
 
 ```{r}
 # import datasets
@@ -29,6 +28,7 @@ wine <- read.csv("C:/Users/xinya/Downloads/Cornell Classes/STSCI 3740/final proj
 
 
 ```{r}
+# look at the variables in the dataset
 head(wine)
 names(wine)
 
@@ -38,13 +38,13 @@ colSums(is.na(wine))
 
 
 ```{r}
+# check the distirbution of each variable
 summary(wine)
-
 ```
 ```{r}
+# check the distribution of wine quality (predicting variable)
 hist(wine$quality, breaks = seq(2.5, 9.5, by = 1), xlim=c(0, 10))
 axis(1, at = 0:10)
-
 ```
 
 Look at the histogram of each variables
@@ -63,16 +63,12 @@ ggplot(wine_long, aes(x = value)) +
 
 
 ```{r}
+# compute a correlation matrix
 cor_matrix <- cor(num_wine)
 cor_matrix
 
+# graph a heatmap based on the correlation matrix
 corrplot(cor_matrix, method="color", tl.cex=0.8)
-
-```
-
-
-```{r}
-pairs(num_wine)
 
 ```
 
@@ -85,17 +81,8 @@ sort(quality_corr, decreasing = TRUE)
 ```
 
 
-
 ```{r}
-selected_features <- wine %>%
-  select(quality, alcohol, density, volatile.acidity, chlorides)
-
-
-pairs(selected_features)
-```
-
-
-```{r}
+# plot the distribution of each variable vs wine quality
 ggplot(wine_long, aes(x = factor(quality), y = value)) +
   geom_boxplot() +
   facet_wrap(~feature, scales = "free") +
