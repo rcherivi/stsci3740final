@@ -1,1 +1,5 @@
 # Wine Quality Visualizations
+
+Understanding which attributes most strongly influence wine quality can help winemakers improve their products and optimize them. To assess wine quality, we used the Wine Quality dataset from the UCI Machine Learning Repository. The dataset includes the following predictors: fixed acidity, volatile acidity, citric acid, residual sugar, chlorides, free sulfur dioxide, total sulfur dioxide, density, pH, sulphases, and type (red or white), along with the response variable quality, which is a score from 0 to 10 assigned by the wine tasters. Our analysis incorporates both regression and classification models to predict the quality and evaluate model performance using metrics like RMSE, AIC, Accuracy, ROC/AUC. We began our analysis with a linear regression model as a baseline and then explored alternative models, including Lasso Regression, K-Nearest Neighbors (KNN), Generalized Additive Models (GAM), Logistic Regression, and Quadratic Discriminant Analysis (LDA/QDA).
+
+Data Source: https://archive.ics.uci.edu/ml/datasets/wine+quality
