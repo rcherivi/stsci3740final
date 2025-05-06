@@ -1,6 +1,6 @@
 ---
 title: "Exploratory Data Analysis"
-author: "Fiona Huang"
+author: "Isabella Chen (ic324), Rishika Cherivirala (rrc87), Fiona Huang (xh393), Katie Perlitz (kap256)"
 date: "2025-04-18"
 output:
   pdf_document: default
