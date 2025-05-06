@@ -16,7 +16,7 @@ library(FNN)
 library(dplyr)
 ```
 
-## Setup Data
+## Set Up Data
 ```{r}
 # Get data
 wineData <- read.csv("~/Downloads/wine-quality-white-and-red.csv")
@@ -73,9 +73,67 @@ ggplot(wineData, aes(x = type, y = quality)) +
   labs(title = "Quality vs Type")
 ```
 
+## GAM Model 1 Using Train/Test Split
+```{r}
+library(gam)
+
+# Example GAM model using smoothing for a few predictors
+gam_model1 <- gam(quality ~ 
+                     s(fixed.acidity) + 
+                     s(volatile.acidity) +
+                     s(citric.acid) +
+                    s(chlorides) + 
+                     s(residual.sugar) +
+                    s(free.sulfur.dioxide) +
+                     s(total.sulfur.dioxide) +
+                     s(density) +
+                     s(sulphates) +
+                     s(alcohol) + s(pH), data = train_data)
+
+summary(gam_model1)
+
+# Predict
+gam_pred <- predict(gam_model1, newdata = test_data)
+
+# RMSE
+mse <- mean((gam_pred - test_data$quality)^2)
+rmse <- sqrt(mse)
+cat("RMSE of GAM1: ", rmse)
+```
+
+## GAM Model 2 Using Train/Test Split
+
+```{r}
+library(gam)
+
+# Example GAM model using smoothing for a few predictors
+gam_model2 <- gam(quality ~ 
+                        fixed.acidity + 
+                     volatile.acidity +
+                     s(citric.acid) +
+                     residual.sugar +
+                     s(chlorides) +
+                     free.sulfur.dioxide +
+                     total.sulfur.dioxide +
+                     density +
+                     s(sulphates) +
+                     s(alcohol) + s(pH), 
+                      data = train_data)
+
+summary(gam_model2)
+
+# Predict
+gam_pred2 <- predict(gam_model2, newdata = test_data)
+
+# RMSE
+mse <- mean((gam_pred2 - test_data$quality)^2)
+rmse <- sqrt(mse)
+cat("RMSE of GAM2: ", rmse)
+```
 
 
 ## Comparing RMSE using 10-Fold Cross Validation for Linear Regression, GAM1, GAM2, KNN, and Lasso
+
 ```{r}
 # Get data
 wineData <- read.csv("~/Downloads/wine-quality-white-and-red.csv")
@@ -160,7 +218,7 @@ for (i in 1:k) {
   training_X <- dplyr::select(train_knn, -quality)
   testing_X <- dplyr::select(test_knn, -quality)
   
-  knn_preds <- knn.reg(train = training_X, test = testing_X, y = as.numeric(train_knn$quality), k = 7)$pred
+  knn_preds <- knn.reg(train = training_X, test = testing_X, y = as.numeric(train_knn$quality), k = 10)$pred
   rmse_knn[i] <- sqrt(mean((knn_preds - as.numeric(test_knn$quality))^2))
   
   # Lasso
